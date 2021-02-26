@@ -66,7 +66,7 @@ signal.signal(signal.SIGINT, signal_handler)
 # | /UT - UnderTail          |
 # |---------------------------
 
-@bot.message_handler(commands=['start', 'balance', 'bill', 'transfer', 'info', 'get_bill', 'UT'])
+@bot.message_handler(commands=['start', 'balance', 'bill', 'transfer', 'info', 'get_bill', 'UT', 'search'])
 def commands_handler(message):
     if message.text.lower() == '/start':
         name = bot.send_message(
@@ -111,6 +111,14 @@ def commands_handler(message):
             bot.send_message(
                 message.chat.id, f'Ваш баланс составляет {balance} Логиков'
             )
+    elif message.text.lower() == '/search':
+        keyboard = types.InlineKeyboardMarkup()
+        callback_button = types.InlineKeyboardButton(text="Все пользователи", callback_data="all_users")
+        callback_button1 = types.InlineKeyboardButton(text="Конкретный пользователь (Скоро...)", callback_data="curent_user")
+        keyboard.add(callback_button)
+        keyboard.add(callback_button1)
+
+        bot.send_message(message.chat.id, 'Выбери режим поиска:', reply_markup=keyboard)
     elif message.text.lower() == '/transfer':
         id = bot.send_message(message.chat.id, 'Введите id для первода -->')
         bot.register_next_step_handler(id, next_step_id)
@@ -145,8 +153,20 @@ def commands_handler(message):
 @bot.callback_query_handler(func=lambda call: True)
 def callback_inline(call):
     if call.data == "all_users":
-        pass
+        response = requests.get(config['Main']['urls.path_to_get_users'])
+        data = response.json()
+        iter = 0
 
+        for i in range(len(data)):
+            data_for_message = data[str(iter)]
+            username = data_for_message['username']
+            name = data_for_message['name']
+            balance = data_for_message['balance']
+            banned = 'Да' if data_for_message['banned'] else 'Нет' 
+            chat_id = data_for_message['chat_id']
+
+            bot.send_message(call.message.chat.id, f'Username - {username} \nИмя - {name} \nБаланс - {balance} \nЗаблокирован? - {banned} \nID - {chat_id}')
+            iter += 1
 # Functions from bot.register_next_step_handler
 def next_step_name(message):
     bot.send_message(message.chat.id, f'Привет {message.text}')
